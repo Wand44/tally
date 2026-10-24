@@ -6,11 +6,6 @@ Tally keeps one shared memory across a freelance job: your rate card prices the
 quote *and* the change order, the agreed terms become the scope you defend, and
 every client message is checked against that scope.
 
-Milestone **M1** (money maths, database + seed, onboarding F1, dashboard shell F7),
-**M2** (scope extraction F5, the Guardian F6), **M3** (the eval harness),
-**M4** (Radar F2, Pricer F3) and **M5** (Proposal F4, client memory F7) are done.
-Demo mode (F8) comes with M6.
-
 ## Run it
 
 ```bash
@@ -21,12 +16,11 @@ npm run db:seed             # demo workspace: 1 freelancer, 3 clients, 2 project
 npm run dev                 # http://localhost:3000
 ```
 
-Then open <http://localhost:3000/onboarding> to edit the rate card,
+Then open <http://localhost:3000/onboarding> for your rate,
 <http://localhost:3000> for the dashboard, <http://localhost:3000/radar> to find
 gigs, <http://localhost:3000/price> to price one, <http://localhost:3000/proposal>
-to write the proposal, <http://localhost:3000/guardian> to check a client
-message and <http://localhost:3000/projects/proj_kinto> to edit that project's
-scope. Every number in the UI comes from the database.
+to write the proposal, and <http://localhost:3000/guardian> to check a client
+message. Every number in the UI comes from the database.
 
 ```bash
 npm test          # vitest: money maths, risk scoring, scope ids, citation checks
