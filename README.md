@@ -253,14 +253,6 @@ of extra work and any refused change order. ≥60 = high, ≥20 = watch.
 
 Light and dark themes, responsive from 390 px up, no client-side framework.
 
-## Not built yet
-
-Demo mode (F8) — scheduled for M6 in `PRD.md`. The live model call in
-`lib/llm.ts` still needs a real key, base URL and model ids (the eval table
-above needs the same four), the Tavily call in `lib/search.ts` has only been
-exercised against the built-in sample set, the app has never been deployed, and
-this is not yet a git repository.
-
 Not legal advice. Applies the terms you entered. Your data stays in this app's
 database.
 
