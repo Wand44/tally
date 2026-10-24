@@ -1,0 +1,14 @@
+
+> tally@0.1.0 dev
+> next dev
+
+▲ Next.js 16.4.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://172.20.10.3:3000
+- Environments: .env
+✓ Ready in 1945ms
+✓ Running next.config.ts took 606ms
+
+○ Compiling / ...
+ GET / 200 in 3.0s (next.js: 1056ms, application-code: 1918ms)
+[?25h
