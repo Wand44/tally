@@ -1,5 +1,14 @@
 # Tally — the AI chief of staff for freelancers
 
+<p align="center">
+  <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.4-black?logo=next.js" alt="Next.js" /></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white" alt="TypeScript" /></a>
+  <a href="https://tailwindcss.com/"><img src="https://img.shields.io/badge/Tailwind_CSS-4.x-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" /></a>
+  <a href="https://orm.drizzle.team/"><img src="https://img.shields.io/badge/Drizzle_ORM-0.45-C5F74F?logo=drizzle&logoColor=black" alt="Drizzle ORM" /></a>
+  <a href="https://github.com/tursodatabase/libsql"><img src="https://img.shields.io/badge/libSQL-SQLite-3C9CD0" alt="libSQL" /></a>
+  <a href="https://zod.dev/"><img src="https://img.shields.io/badge/Zod-4.x-3068B7" alt="Zod" /></a>
+</p>
+
 > Win the gig. Price it right. Protect the scope.
 
 Tally keeps one shared memory across a freelance job: your rate card prices the

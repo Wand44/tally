@@ -3,38 +3,38 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: #f7f5f1;
-  --panel: #fbfaf7;
-  --panel-2: #f1eee8;
-  --fg: #15130f;
-  --muted: #6b6458;
-  --line: #d7d2c9;
-  --accent: #b71c1c;
-  --accent-fg: #f8f5f2;
-  --accent-soft: #f6e4e2;
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --panel-2: #eef1f8;
+  --fg: #0f1026;
+  --muted: #5a6178;
+  --line: #dfe3ef;
+  --accent: #2563eb;
+  --accent-fg: #f8f9ff;
+  --accent-soft: #e7edff;
   --good: #1f7c3f;
   --good-soft: #e7f5ec;
   --warn: #8a5a12;
   --warn-soft: #f6efe2;
-  --bad: #b71c1c;
+  --bad: #dc2626;
   --bad-soft: #f6e4e2;
 }
 
 .dark {
-  --bg: #0f0f0d;
-  --panel: #151413;
-  --panel-2: #1f1d1a;
-  --fg: #f5f3ee;
-  --muted: #b9b2a3;
-  --line: #2f2b26;
-  --accent: #ff3f2e;
-  --accent-fg: #f8f5f2;
-  --accent-soft: #341d19;
+  --bg: #060914;
+  --panel: #0c1124;
+  --panel-2: #11162b;
+  --fg: #e7ebff;
+  --muted: #8f98c3;
+  --line: #1d2340;
+  --accent: #5b8bff;
+  --accent-fg: #f8f9ff;
+  --accent-soft: #1a244a;
   --good: #3fb984;
   --good-soft: #152b22;
   --warn: #f0b35b;
   --warn-soft: #342a17;
-  --bad: #ff3f2e;
+  --bad: #f87171;
   --bad-soft: #341d19;
 }
 
