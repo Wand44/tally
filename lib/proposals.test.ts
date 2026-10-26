@@ -62,15 +62,16 @@ describe('proposalText', () => {
     deliveryDate: '2026-11-02',
   });
 
-  it('carries the price, the timeline, the exclusions and the revision limit', () => {
-    expect(text).toContain('Price: $1,125.00 for 12 hours of work');
-    expect(text).toContain('Delivery: within 3 working days (by 2026-11-02).');
-    expect(text).toContain('Revisions: 2 rounds included.');
-    expect(text).toContain('- photography');
-    expect(text).toContain('- copywriting');
+  it('is a few conversational sentences carrying every term', () => {
+    expect(text).toContain("For $1,125.00 (12 hours at $45.00/h");
+    expect(text).toContain("I'll deliver 12 product renders.");
+    expect(text).toContain('Photography and copywriting are not part of this price.');
+    expect(text).toContain('Delivery by 2026-11-02 (within 3 working days), with 2 rounds of revisions included.');
+    expect(text.split(/(?<=[.!?])\s+/)).toHaveLength(3);
   });
 
-  it('is just the terms: no greeting, no sign-off', () => {
-    expect(text.startsWith('What is included:')).toBe(true);
+  it('has no greeting, no sign-off, no headers', () => {
+    expect(text).not.toContain('Hi,');
+    expect(text).not.toContain('included:');
   });
 });

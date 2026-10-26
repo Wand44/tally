@@ -58,14 +58,22 @@ export function RadarBoard({
     return () => clearTimeout(timer);
   }, [pending]);
 
-  async function readBatch(items: QueueItem[], myRun: number) {
+  async function readBatch(items: QueueItem[], myRun: number, clearFirst: boolean) {
+    let failed = 0;
     for (let index = 0; index < items.length; index++) {
       setProgress({ done: index, total: items.length, phase: 'Reading posting' });
-      const result = await radarExtractGigAction(items[index]);
+      const result = await radarExtractGigAction({
+        ...items[index],
+        clearOld: clearFirst && index === 0,
+      });
       if (runId.current !== myRun) return false; // a newer search started
       if (!result.ok) {
-        setError(result.message ?? 'Something went wrong.');
-        return false;
+        if (result.limited) {
+          setError(result.message ?? 'Hourly AI run cap reached.');
+          return false; // stop: the next reads would fail the same way
+        }
+        failed += 1;
+        continue; // one bad posting does not kill the batch
       }
       if (result.gig) {
         const gig = result.gig;
@@ -74,7 +82,10 @@ export function RadarBoard({
       }
     }
     setProgress({ done: items.length, total: items.length, phase: 'Reading posting' });
-    return true;
+    if (failed > 0) {
+      setError(`${failed} posting${failed === 1 ? '' : 's'} could not be read, skipped.`);
+    }
+    return failed < items.length;
   }
 
   async function run() {
@@ -94,7 +105,7 @@ export function RadarBoard({
       setGigs([]);
       const firstBatch = search.results.slice(0, BATCH_SIZE);
       setQueue(search.results.slice(BATCH_SIZE));
-      await readBatch(firstBatch, myRun);
+      await readBatch(firstBatch, myRun, true);
     } finally {
       if (runId.current === myRun) {
         setPending(false);
@@ -110,7 +121,7 @@ export function RadarBoard({
     try {
       const batch = queue.slice(0, BATCH_SIZE);
       setQueue(queue.slice(BATCH_SIZE));
-      await readBatch(batch, myRun);
+      await readBatch(batch, myRun, false);
     } finally {
       if (runId.current === myRun) {
         setPending(false);

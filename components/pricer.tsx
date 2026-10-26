@@ -238,28 +238,30 @@ export function Pricer({
                 The one message the client gets. The model writes the words; the price, the timeline
                 and the revision limit are added in code.
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {tones.map((option) => (
-                  <button
-                    key={option.id}
-                    type="button"
-                    className={option.id === tone ? 'btn btn-primary' : 'btn'}
-                    onClick={() => setTone(option.id)}
-                  >
-                    {option.label}
-                  </button>
-                ))}
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  {tones.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className={option.id === tone ? 'btn btn-primary' : 'btn'}
+                      onClick={() => setTone(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                <button type="button" className="btn btn-primary" onClick={write} disabled={pending}>
+                  {busy === 'proposal' ? (
+                    <>
+                      <span className="spinner" aria-hidden="true" />
+                      Writing...
+                    </>
+                  ) : (
+                    'Write the proposal'
+                  )}
+                </button>
               </div>
-              <button type="button" className="btn btn-primary mt-3" onClick={write} disabled={pending}>
-                {busy === 'proposal' ? (
-                  <>
-                    <span className="spinner" aria-hidden="true" />
-                    Writing...
-                  </>
-                ) : (
-                  'Write the proposal'
-                )}
-              </button>
 
               {proposal ? (
                 <div className="mt-4 space-y-4">

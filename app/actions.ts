@@ -317,10 +317,9 @@ export interface RadarSearchResult {
   searchProvider?: string;
 }
 
-/** F2 step 1: search the marketplaces and clear the old shortlist. */
+/** F2 step 1: search the marketplaces. The stored shortlist stays until the
+ * first new gig replaces it, so closing the tab mid-run loses nothing. */
 export async function radarSearchAction(query: string): Promise<RadarSearchResult> {
-  const db = getDb();
-  const { gigs } = schema;
   const workspace = await getWorkspace();
   if (!workspace?.rateCard || !workspace.profile) {
     return { ok: false, message: 'Set up your rate card first.' };
@@ -334,9 +333,6 @@ export async function radarSearchAction(query: string): Promise<RadarSearchResul
     if (!allowed.ok) return { ok: false, message: allowed.message };
 
     const search = await searchWeb(searchQuery, 9, MARKETPLACE_DOMAINS);
-
-    // The old shortlist belongs to an old search.
-    await db.delete(gigs).where(eq(gigs.profileId, workspace.profile.id));
 
     return {
       ok: true,
@@ -353,13 +349,17 @@ export interface RadarExtractResult {
   message?: string;
   gig?: RadarGig & { id: string };
   provider?: string;
+  /** Set when the run cap stopped this read (the client stops the batch). */
+  limited?: boolean;
 }
 
-/** F2 step 2: read one posting, score it in code, store it, return it. */
+/** F2 step 2: read one posting, score it in code, store it, return it.
+ * clearOld=true on the first read of a run swaps the stored shortlist. */
 export async function radarExtractGigAction(input: {
   title: string;
   url: string;
   content: string;
+  clearOld?: boolean;
 }): Promise<RadarExtractResult> {
   const db = getDb();
   const { gigs } = schema;
@@ -377,7 +377,7 @@ export async function radarExtractGigAction(input: {
 
   try {
     const allowed = await allowAiRun();
-    if (!allowed.ok) return { ok: false, message: allowed.message };
+    if (!allowed.ok) return { ok: false, message: allowed.message, limited: true };
 
     const { gig, provider } = await extractGig({
       result: { ...input, score: 0 },
@@ -386,6 +386,11 @@ export async function radarExtractGigAction(input: {
       currency: rateCard.currency,
     });
     if (!gig) return { ok: false, message: 'That posting could not be read.' };
+
+    // The first gig a run stores replaces the old shortlist atomically-ish.
+    if (input.clearOld) {
+      await db.delete(gigs).where(eq(gigs.profileId, workspace.profile.id));
+    }
 
     const id = crypto.randomUUID();
     await db.insert(gigs).values({

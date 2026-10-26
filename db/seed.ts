@@ -143,6 +143,44 @@ export async function seedDemoWorkspace() {
       deadline: '2026-10-28',
       createdAt: new Date(now - 12 * DAY),
     },
+    {
+      id: 'proj_studio',
+      clientId: 'client_lena',
+      title: 'Packaging hero renders - 6 SKUs',
+      status: 'completed',
+      agreedPriceCents: feeAdjustedPrice(20 * BASE_RATE_CENTS, FEE_PERCENT),
+      estimatedHours: 20,
+      agreedTerms: [
+        'Deliverables: 6 packaging hero renders at 3000x3000 px.',
+        'Included: 2 rounds of revisions.',
+        'Not included: lifestyle mockups and print-ready artwork.',
+        'Deadline: 2026-10-10.',
+        'Client provides product CAD files and label artwork.',
+        'Price: $1125.',
+      ].join('\n'),
+      includedRevisions: 2,
+      revisionsUsed: 2,
+      deadline: '2026-10-10',
+      createdAt: new Date(now - 50 * DAY),
+    },
+    {
+      id: 'proj_banner',
+      clientId: 'client_sam',
+      title: 'Trade-show banner renders',
+      status: 'paused',
+      agreedPriceCents: feeAdjustedPrice(8 * BASE_RATE_CENTS, FEE_PERCENT),
+      estimatedHours: 8,
+      agreedTerms: [
+        'Deliverables: 2 banner renders at 6000x2500 px.',
+        'Included: 1 round of revisions.',
+        'Not included: booth layout or copywriting.',
+        'Price: $450.',
+      ].join('\n'),
+      includedRevisions: 1,
+      revisionsUsed: 0,
+      deadline: null,
+      createdAt: new Date(now - 8 * DAY),
+    },
   ]);
 
   await db.insert(scopeClauses).values([
@@ -200,6 +238,30 @@ export async function seedDemoWorkspace() {
       ref: 'C3',
       category: 'exclusion',
       text: 'Motion previews, animation and 3D model delivery are not included.',
+      sortOrder: 3,
+    },
+    {
+      id: 'clause_studio_1',
+      projectId: 'proj_studio',
+      ref: 'C1',
+      category: 'deliverable',
+      text: '6 packaging hero renders at 3000x3000 px.',
+      sortOrder: 1,
+    },
+    {
+      id: 'clause_studio_2',
+      projectId: 'proj_studio',
+      ref: 'C2',
+      category: 'revision_limit',
+      text: 'Two rounds of revisions are included.',
+      sortOrder: 2,
+    },
+    {
+      id: 'clause_studio_3',
+      projectId: 'proj_studio',
+      ref: 'C3',
+      category: 'exclusion',
+      text: 'Lifestyle mockups and print-ready artwork are not included.',
       sortOrder: 3,
     },
   ]);
@@ -276,6 +338,22 @@ export async function seedDemoWorkspace() {
       direction: 'out',
       body: 'Marble variant added as change order #2 - $56.25. Different angle is priced separately.',
       createdAt: new Date(now - 2 * DAY + 2 * 60 * 60 * 1000),
+    },
+    {
+      id: 'msg_studio_1',
+      projectId: 'proj_studio',
+      clientId: 'client_lena',
+      direction: 'in',
+      body: 'Small favour - could you redo one render with the gold cap instead of the silver one?',
+      createdAt: new Date(now - 20 * DAY),
+    },
+    {
+      id: 'msg_studio_2',
+      projectId: 'proj_studio',
+      clientId: 'client_lena',
+      direction: 'in',
+      body: 'All six look perfect, shipping them to the printer today. Thanks!',
+      createdAt: new Date(now - 15 * DAY),
     },
   ] as const;
 
@@ -374,18 +452,36 @@ export async function seedDemoWorkspace() {
       revisionsUsedAfter: 1,
       createdAt: new Date(now - 2 * DAY + 60 * 60 * 1000),
     },
+    {
+      id: 'verdict_studio_1',
+      messageId: 'msg_studio_1',
+      projectId: 'proj_studio',
+      verdict: 'GRAY',
+      clauseRefs: JSON.stringify(['C2']),
+      quotedText: JSON.stringify(['Two rounds of revisions are included.']),
+      extraWorkItems: JSON.stringify([{ name: 'Gold cap material variant', est_hours: 0.5 }]),
+      reasoning: 'A material swap on one render fits a revision round rather than a change order; polite framing does not change that.',
+      revisionsUsedAfter: 2,
+      createdAt: new Date(now - 20 * DAY + 60 * 60 * 1000),
+    },
   ];
+
+  const projectMeta: Record<string, { title: string; includedRevisions: number }> = {
+    proj_kinto: { title: 'Coffee brand launch site', includedRevisions: 2 },
+    proj_northwind: { title: 'Product render pack', includedRevisions: 1 },
+    proj_studio: { title: 'Packaging hero renders', includedRevisions: 2 },
+  };
 
   await db.insert(verdicts).values(
     verdictRows.map((verdict) => ({
       ...verdict,
       replyDrafts: seededReplyDrafts({
         message: messageRows.find((message) => message.id === verdict.messageId)?.body ?? '',
-        projectTitle: verdict.projectId === 'proj_kinto' ? 'Coffee brand launch site' : 'Product render pack',
+        projectTitle: projectMeta[verdict.projectId]?.title ?? '',
         items: JSON.parse(verdict.extraWorkItems),
         remainingRevisions: Math.max(
           0,
-          (verdict.projectId === 'proj_kinto' ? 2 : 1) - (verdict.revisionsUsedAfter ?? 0),
+          (projectMeta[verdict.projectId]?.includedRevisions ?? 0) - (verdict.revisionsUsedAfter ?? 0),
         ),
       }),
     })),
@@ -458,6 +554,17 @@ export async function seedDemoWorkspace() {
       sentAt: null,
       createdAt: new Date(now - 2 * DAY + 90 * 60 * 1000),
     },
+    {
+      id: 'co_studio_1',
+      projectId: 'proj_studio',
+      clientId: 'client_lena',
+      verdictId: 'verdict_studio_1',
+      title: 'Gold cap material variant',
+      items: JSON.stringify([{ name: 'Gold cap material variant', estHours: 0.5 }]),
+      status: 'accepted',
+      sentAt: new Date(now - 20 * DAY + 3 * 60 * 60 * 1000),
+      createdAt: new Date(now - 20 * DAY + 2 * 60 * 60 * 1000),
+    },
   ].map((order) => {
     const items = JSON.parse(order.items) as { name: string; estHours: number }[];
     const totals = changeOrderTotal(items, BASE_RATE_CENTS, FEE_PERCENT);
@@ -471,7 +578,7 @@ export async function seedDemoWorkspace() {
 
   await db.insert(changeOrders).values(changeOrderRows);
 
-  console.log('Seeded: 1 freelancer, 3 clients, 2 projects, 9 messages, 7 verdicts, 6 change orders.');
+  console.log('Seeded: 1 freelancer, 3 clients, 4 projects (2 active, 1 completed, 1 paused), 11 messages, 8 verdicts, 7 change orders.');
 }
 
 // Only run as a script (`npm run db:seed`). The app imports the seed to load
