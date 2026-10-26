@@ -1,11 +1,17 @@
 'use client';
 
-import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { priceGigAction } from '@/app/actions';
+import { useState, useTransition } from 'react';
+import { createOrderFromQuoteAction, generateProposalAction, priceGigAction } from '@/app/actions';
+import { CardSkeleton, Skeleton } from '@/components/skeleton';
 import { formatMoney } from '@/lib/money';
 import type { QuoteOutcome } from '@/lib/pricing';
-import { CardSkeleton, Skeleton } from '@/components/skeleton';
+import type { Proposal, ProposalTone } from '@/lib/proposals';
+
+const tones: { id: ProposalTone; label: string }[] = [
+  { id: 'friendly', label: 'Friendly' },
+  { id: 'formal', label: 'Formal' },
+];
 
 export function Pricer({
   gigId,
@@ -29,11 +35,17 @@ export function Pricer({
   const [hours, setHours] = useState(initialHours ? String(initialHours) : '');
   const [clientName, setClientName] = useState('');
   const [quote, setQuote] = useState<QuoteOutcome | null>(null);
+  const [tone, setTone] = useState<ProposalTone>('friendly');
+  const [proposal, setProposal] = useState<Proposal | null>(null);
+  const [copied, setCopied] = useState('');
+  const [orderProjectId, setOrderProjectId] = useState('');
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
+  const [busy, setBusy] = useState<'price' | 'proposal' | 'order' | null>(null);
 
   function price() {
     setError('');
+    setBusy('price');
     startTransition(async () => {
       const result = await priceGigAction({
         gigId,
@@ -42,21 +54,54 @@ export function Pricer({
         hours: hours.trim() ? Number(hours) : null,
         clientName: clientName.trim() || undefined,
       });
-      if (result.ok && result.quote) setQuote(result.quote);
-      else setError(result.message ?? 'Something went wrong.');
+      if (result.ok && result.quote) {
+        setQuote(result.quote);
+        setProposal(null);
+        setOrderProjectId('');
+      } else {
+        setError(result.message ?? 'Something went wrong.');
+      }
+      setBusy(null);
     });
+  }
+
+  function write() {
+    if (!quote) return;
+    setError('');
+    setBusy('proposal');
+    startTransition(async () => {
+      const result = await generateProposalAction({ quoteId: quote.quoteId, tone });
+      if (result.ok && result.proposal) setProposal(result.proposal);
+      else setError(result.message ?? 'Something went wrong.');
+      setBusy(null);
+    });
+  }
+
+  function addAsOrder() {
+    if (!quote) return;
+    setError('');
+    setBusy('order');
+    startTransition(async () => {
+      const result = await createOrderFromQuoteAction({
+        quoteId: quote.quoteId,
+        clientName,
+        terms: proposal?.scopeTerms,
+      });
+      if (result.ok && result.projectId) setOrderProjectId(result.projectId);
+      else setError(result.message ?? 'Something went wrong.');
+      setBusy(null);
+    });
+  }
+
+  async function copy(label: string, text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(label);
   }
 
   return (
     <div className="grid gap-4 lg:grid-cols-5">
       <div className="card lg:col-span-2">
-        <h2 className="font-semibold">The gig</h2>
-        <p className="hint mt-1">
-          From Radar, or paste the posting yourself. Tally prices it with your rate card and never
-          below your floor of {formatMoney(floorHourlyCents, currency)}/h.
-        </p>
-
-        <label className="label mt-4" htmlFor="pricer-title">
+        <label className="label" htmlFor="pricer-title">
           Title
         </label>
         <input
@@ -113,8 +158,13 @@ export function Pricer({
           </>
         ) : null}
 
-        <button type="button" className="btn btn-primary mt-4 w-full" onClick={price} disabled={pending}>
-          {pending ? (
+        <button
+          type="button"
+          className="btn btn-primary mt-4 w-full"
+          onClick={price}
+          disabled={pending}
+        >
+          {busy === 'price' ? (
             <>
               <span className="spinner" aria-hidden="true" />
               Pricing...
@@ -127,7 +177,7 @@ export function Pricer({
       </div>
 
       <div className="lg:col-span-3">
-        {pending ? (
+        {busy === 'price' && !quote ? (
           <div className="space-y-4">
             <div className="card">
               <Skeleton className="h-3 w-28" />
@@ -141,8 +191,8 @@ export function Pricer({
         ) : !quote ? (
           <div className="card h-full">
             <p className="text-sm text-muted">
-              The recommended price, the range, what you keep after the fee and the sources behind
-              the market range appear here.
+              The recommended price, the proposal and the order appear here. One flow: price it,
+              write the proposal, send it, then add the order.
             </p>
           </div>
         ) : (
@@ -160,10 +210,6 @@ export function Pricer({
                 {quote.hours}h job · you keep {formatMoney(quote.totals.netCents, quote.currency)} after
                 the platform fee · {formatMoney(quote.totals.netHourlyCents, quote.currency)}/h net
               </p>
-
-              <Link href={`/proposal?quote=${quote.quoteId}`} className="btn btn-primary mt-4">
-                Write the proposal
-              </Link>
 
               <div className="mt-4 grid grid-cols-3 gap-3">
                 <div>
@@ -187,17 +233,163 @@ export function Pricer({
             </div>
 
             <div className="card">
-              <h3 className="font-semibold">Why this price</h3>
+              <h3 className="font-semibold">Write the proposal</h3>
+              <p className="hint mt-1">
+                The one message the client gets. The model writes the words; the price, the timeline
+                and the revision limit are added in code.
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {tones.map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    className={option.id === tone ? 'btn btn-primary' : 'btn'}
+                    onClick={() => setTone(option.id)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              <button type="button" className="btn btn-primary mt-3" onClick={write} disabled={pending}>
+                {busy === 'proposal' ? (
+                  <>
+                    <span className="spinner" aria-hidden="true" />
+                    Writing...
+                  </>
+                ) : (
+                  'Write the proposal'
+                )}
+              </button>
+
+              {proposal ? (
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs text-muted">
+                    Delivery by {proposal.deliveryDate} · {proposal.deliveryDays} working day
+                    {proposal.deliveryDays === 1 ? '' : 's'} · {proposal.revisionsIncluded} round
+                    {proposal.revisionsIncluded === 1 ? '' : 's'} of revisions included
+                  </p>
+                  <div>
+                    <p className="card-title">What is included</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">
+                      {proposal.included.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="card-title">What is not included</p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
+                      {proposal.exclusions.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-panel-2 p-3 text-xs">
+                    {proposal.text}
+                  </pre>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => copy('proposal', proposal.text)}
+                    >
+                      {copied === 'proposal' ? 'Copied' : 'Copy proposal'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => copy('terms', proposal.scopeTerms)}
+                    >
+                      {copied === 'terms' ? 'Copied' : 'Copy scope terms'}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="card">
+              <h3 className="font-semibold">Make it an order</h3>
+              <p className="hint mt-1">
+                {proposal
+                  ? 'Creates a project at this price with the proposal terms, ready for scope extraction.'
+                  : 'Creates a project at this price. Write the proposal first and its terms come along.'}
+              </p>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  className="input w-56"
+                  value={clientName}
+                  onChange={(event) => setClientName(event.target.value)}
+                  placeholder="Client name"
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={addAsOrder}
+                  disabled={pending || Boolean(orderProjectId)}
+                >
+                  {busy === 'order' ? (
+                    <>
+                      <span className="spinner" aria-hidden="true" />
+                      Adding...
+                    </>
+                  ) : orderProjectId ? (
+                    'Added'
+                  ) : (
+                    'Add as order'
+                  )}
+                </button>
+                {orderProjectId ? (
+                  <Link href="/orders" className="text-sm text-accent hover:underline">
+                    See it in Orders →
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            <details className="card group">
+              <summary className="flex cursor-pointer select-none items-center gap-2 font-semibold">
+                <svg
+                  className="transition group-open:rotate-90"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+                Why this price
+              </summary>
               <p className="mt-2 text-sm">{quote.rationale}</p>
               <ul className="mt-3 space-y-1 text-xs text-muted">
                 <li>{quote.rateNote}</li>
                 <li>{quote.riskNote}</li>
                 <li>{quote.marketNote}</li>
               </ul>
-            </div>
+            </details>
 
-            <div className="card">
-              <h3 className="font-semibold">Sources</h3>
+            <details className="card group">
+              <summary className="flex cursor-pointer select-none items-center gap-2 font-semibold">
+                <svg
+                  className="transition group-open:rotate-90"
+                  width="12"
+                  height="12"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+                Sources
+              </summary>
               {quote.sources.length === 0 ? (
                 <p className="mt-2 text-sm text-muted">
                   No market source was kept for this quote, so the price rests on your rate card alone.
@@ -219,7 +411,7 @@ export function Pricer({
                   ))}
                 </ul>
               )}
-            </div>
+            </details>
           </div>
         )}
       </div>

@@ -28,8 +28,8 @@ export default async function PricePage({
         <div>
           <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl" style={{ fontFamily: 'var(--font-serif)' }}>Pricer</h1>
           <p className="mt-1 text-sm text-muted">
-            A number you can defend: your rate card sets the price, the platform fee is already in it
-            and the floor is never broken.
+            Price a specific order: paste the gig, get a number you can defend, write the proposal
+            and turn it into an order - all on one page.
           </p>
         </div>
 

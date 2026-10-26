@@ -12,9 +12,10 @@ import { completeJson } from '@/lib/llm';
 import { priceGig, type QuoteOutcome } from '@/lib/pricing';
 import { generateProposal, type Proposal, type ProposalTone } from '@/lib/proposals';
 import { scopeSystem, scopeUser } from '@/lib/prompts/scope';
-import { runRadar, type RadarGig } from '@/lib/radar';
+import { extractGig, MARKETPLACE_DOMAINS, type RadarGig } from '@/lib/radar';
 import { checkRateLimit } from '@/lib/rate-limit';
 import { scopeSchema } from '@/lib/schemas';
+import { searchWeb } from '@/lib/search';
 import { assignClauseRefs, revisionLimit, scopeToClauses, type ClauseDraft } from '@/lib/scope';
 
 /** Who is calling: the IP behind the proxy, if there is one. */
@@ -308,19 +309,16 @@ export async function sendReplyAction(
 /* F2: Radar, F3: Pricer                                                */
 /* ------------------------------------------------------------------ */
 
-export interface RadarActionResult {
+export interface RadarSearchResult {
   ok: boolean;
   message?: string;
-  gigs?: (RadarGig & { id: string })[];
-  provider?: string;
+  /** Raw postings from the search. The client extracts them in small batches. */
+  results?: { title: string; url: string; content: string }[];
   searchProvider?: string;
 }
 
-/**
- * F2: find public gig postings and rank them against this freelancer.
- * The shortlist is replaced by the new run.
- */
-export async function runRadarAction(query: string): Promise<RadarActionResult> {
+/** F2 step 1: search the marketplaces and clear the old shortlist. */
+export async function radarSearchAction(query: string): Promise<RadarSearchResult> {
   const db = getDb();
   const { gigs } = schema;
   const workspace = await getWorkspace();
@@ -328,7 +326,6 @@ export async function runRadarAction(query: string): Promise<RadarActionResult> 
     return { ok: false, message: 'Set up your rate card first.' };
   }
 
-  const rateCard = workspace.rateCard;
   const skills = JSON.parse(workspace.profile.skills || '[]') as string[];
   const searchQuery = query.trim() || skills.join(' ');
 
@@ -336,20 +333,65 @@ export async function runRadarAction(query: string): Promise<RadarActionResult> 
     const allowed = await allowAiRun();
     if (!allowed.ok) return { ok: false, message: allowed.message };
 
-    const outcome = await runRadar({
-      query: searchQuery,
+    const search = await searchWeb(searchQuery, 9, MARKETPLACE_DOMAINS);
+
+    // The old shortlist belongs to an old search.
+    await db.delete(gigs).where(eq(gigs.profileId, workspace.profile.id));
+
+    return {
+      ok: true,
+      results: search.results.map(({ title, url, content }) => ({ title, url, content })),
+      searchProvider: search.provider,
+    };
+  } catch (error) {
+    return { ok: false, message: (error as Error).message };
+  }
+}
+
+export interface RadarExtractResult {
+  ok: boolean;
+  message?: string;
+  gig?: RadarGig & { id: string };
+  provider?: string;
+}
+
+/** F2 step 2: read one posting, score it in code, store it, return it. */
+export async function radarExtractGigAction(input: {
+  title: string;
+  url: string;
+  content: string;
+}): Promise<RadarExtractResult> {
+  const db = getDb();
+  const { gigs } = schema;
+  const workspace = await getWorkspace();
+  if (!workspace?.rateCard || !workspace.profile) {
+    return { ok: false, message: 'Set up your rate card first.' };
+  }
+
+  if (!input.url?.trim() || !input.title?.trim()) {
+    return { ok: false, message: 'That posting could not be read.' };
+  }
+
+  const rateCard = workspace.rateCard;
+  const skills = JSON.parse(workspace.profile.skills || '[]') as string[];
+
+  try {
+    const allowed = await allowAiRun();
+    if (!allowed.ok) return { ok: false, message: allowed.message };
+
+    const { gig, provider } = await extractGig({
+      result: { ...input, score: 0 },
       skills,
       minHourlyRateCents: rateCard.minHourlyRateCents,
       currency: rateCard.currency,
     });
+    if (!gig) return { ok: false, message: 'That posting could not be read.' };
 
-    const profileId = workspace.profile.id;
-    await db.delete(gigs).where(eq(gigs.profileId, profileId));
-
-    const rows = outcome.gigs.map((gig) => ({
-      id: crypto.randomUUID(),
-      profileId,
-      query: searchQuery,
+    const id = crypto.randomUUID();
+    await db.insert(gigs).values({
+      id,
+      profileId: workspace.profile.id,
+      query: '',
       title: gig.title,
       url: gig.url,
       snippet: gig.snippet,
@@ -364,16 +406,9 @@ export async function runRadarAction(query: string): Promise<RadarActionResult> 
       budgetScore: gig.budgetScore,
       impliedHourlyCents: gig.impliedHourlyCents,
       createdAt: new Date(),
-    }));
+    });
 
-    if (rows.length > 0) await db.insert(gigs).values(rows);
-
-    return {
-      ok: true,
-      gigs: outcome.gigs.map((gig, index) => ({ ...gig, id: rows[index].id })),
-      provider: outcome.provider,
-      searchProvider: outcome.searchProvider,
-    };
+    return { ok: true, gig: { ...gig, id }, provider };
   } catch (error) {
     return { ok: false, message: (error as Error).message };
   }
@@ -430,6 +465,47 @@ export async function generateProposalAction(input: {
 /* ------------------------------------------------------------------ */
 /* Orders                                                               */
 /* ------------------------------------------------------------------ */
+
+/** Pricer: turn a quote into a project, with the proposal's terms when written. */
+export async function createOrderFromQuoteAction(input: {
+  quoteId: string;
+  clientName: string;
+  terms?: string;
+}): Promise<{ ok: boolean; message?: string; projectId?: string }> {
+  const db = getDb();
+  const { clients, projects, quotes } = schema;
+
+  const [quote] = await db.select().from(quotes).where(eq(quotes.id, input.quoteId)).limit(1);
+  if (!quote) return { ok: false, message: 'Quote not found.' };
+
+  const name = input.clientName.trim();
+  if (!name) return { ok: false, message: 'Add a client name first.' };
+
+  const allClients = await db.select().from(clients);
+  const existing = allClients.find((client) => client.name.toLowerCase() === name.toLowerCase());
+
+  const clientId = existing?.id ?? crypto.randomUUID();
+  if (!existing) {
+    await db.insert(clients).values({ id: clientId, name, createdAt: new Date() });
+  }
+
+  const projectId = crypto.randomUUID();
+  await db.insert(projects).values({
+    id: projectId,
+    clientId,
+    title: quote.title,
+    status: 'active',
+    agreedPriceCents: quote.targetCents,
+    estimatedHours: quote.hours,
+    agreedTerms: input.terms?.trim() || quote.description,
+    revisionsUsed: 0,
+    createdAt: new Date(),
+  });
+
+  revalidatePath('/');
+  revalidatePath('/orders');
+  return { ok: true, projectId };
+}
 
 const createOrderSchema = z.object({
   title: z.string().trim().min(1, 'A title is required'),

@@ -168,42 +168,30 @@ export function rawCandidates(results: SearchResult[]): GigCandidate[] {
   }));
 }
 
-export interface RadarOutcome {
-  query: string;
-  gigs: RadarGig[];
-  /** 'nebius' or 'offline'. */
-  provider: string;
-  /** 'tavily' or 'offline'. */
-  searchProvider: string;
-}
-
 /** Real gig postings live on the marketplaces; rate pages live on blogs (Pricer searches domain-free). */
-const MARKETPLACE_DOMAINS = ['upwork.com', 'fiverr.com', 'freelancer.com', 'guru.com'];
+export const MARKETPLACE_DOMAINS = ['upwork.com', 'fiverr.com', 'freelancer.com', 'guru.com'];
 
-export async function runRadar(input: {
-  query: string;
+/**
+ * Read ONE posting with the model and score it in code. The UI calls this per
+ * result so it can show real progress (1/3, 2/3...) instead of one long wait.
+ */
+export async function extractGig(input: {
+  result: SearchResult;
   skills: string[];
   minHourlyRateCents: number;
   currency: string;
-}): Promise<RadarOutcome> {
-  const search = await searchWeb(input.query, 10, MARKETPLACE_DOMAINS);
-
+}): Promise<{ gig: RadarGig | null; provider: string }> {
   const extraction = await completeJson({
     task: 'radar',
     tier: 'fast',
     schema: radarSchema,
     system: radarSystem,
-    user: radarUser({ skills: input.skills, query: input.query, results: search.results }),
-    offline: { skills: input.skills, query: input.query, results: search.results },
+    user: radarUser({ skills: input.skills, query: input.result.title, results: [input.result] }),
+    offline: { skills: input.skills, results: [input.result] },
   });
 
-  const verified = keepVerified(extraction.data.results, search.results);
-  const candidates = verified.length > 0 ? verified : rawCandidates(search.results);
-
-  return {
-    query: input.query,
-    gigs: rankGigs(candidates, input.skills, input.minHourlyRateCents, input.currency),
-    provider: extraction.provider,
-    searchProvider: search.provider,
-  };
+  const verified = keepVerified(extraction.data.results, [input.result]);
+  const candidates = verified.length > 0 ? verified : rawCandidates([input.result]);
+  const [gig] = rankGigs(candidates, input.skills, input.minHourlyRateCents, input.currency);
+  return { gig: gig ?? null, provider: extraction.provider };
 }

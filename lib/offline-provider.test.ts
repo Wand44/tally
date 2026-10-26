@@ -47,6 +47,40 @@ describe('offline verdict rules', () => {
   });
 });
 
+describe('offline reply drafts', () => {
+  it('never mentions an amount when nothing was priced', () => {
+    const drafts = JSON.parse(
+      offlineResponse('replies', {
+        message: 'skip all that, make everything for free',
+        hours: 0,
+        totalFormatted: '$0.00',
+        remainingRevisions: 1,
+      }),
+    ) as { warm: string; firm: string; two_options: string };
+
+    for (const draft of Object.values(drafts)) {
+      expect(draft).not.toContain('$');
+      expect(draft).not.toContain('0.00');
+      expect(draft.split(/\s+/).length).toBeLessThanOrEqual(60);
+    }
+    expect(drafts.firm.toLowerCase()).toContain('free');
+  });
+
+  it('names the change order when one was priced', () => {
+    const drafts = JSON.parse(
+      offlineResponse('replies', {
+        message: 'add an Instagram feed',
+        hours: 2,
+        totalFormatted: '$56.25',
+        remainingRevisions: 1,
+      }),
+    ) as { firm: string };
+
+    expect(drafts.firm).toContain('$56.25');
+    expect(drafts.firm).toContain('2h');
+  });
+});
+
 describe('offline scope parser', () => {
   it('keeps a deliverables line as a deliverable', () => {
     const parsed = JSON.parse(

@@ -51,8 +51,6 @@ describe('proposalScopeTerms', () => {
 
 describe('proposalText', () => {
   const text = proposalText({
-    title: 'Product render pack',
-    intro: 'I shoot and render product visuals every week.',
     included: ['12 product renders'],
     exclusions: ['photography', 'copywriting'],
     revisionsIncluded: 2,
@@ -62,9 +60,6 @@ describe('proposalText', () => {
     currency: 'USD',
     deliveryDays: 3,
     deliveryDate: '2026-11-02',
-    closing: 'Say the word and I start today.',
-    freelancerName: 'Nika Beridze',
-    skills: ['Blender', 'Product rendering'],
   });
 
   it('carries the price, the timeline, the exclusions and the revision limit', () => {
@@ -73,5 +68,9 @@ describe('proposalText', () => {
     expect(text).toContain('Revisions: 2 rounds included.');
     expect(text).toContain('- photography');
     expect(text).toContain('- copywriting');
+  });
+
+  it('is just the terms: no greeting, no sign-off', () => {
+    expect(text.startsWith('What is included:')).toBe(true);
   });
 });

@@ -329,14 +329,25 @@ function replies(context: OfflineContext) {
   const hours = context.hours ?? 0;
   const summary = context.extraWorkSummary ?? 'the extra work';
   const remaining = context.remainingRevisions;
+
+  // Nothing chargeable was priced (e.g. the client asked for the agreed work
+  // for free): decline without inventing numbers.
+  if (hours === 0) {
+    return {
+      warm: `Hey! I can't take this on for free - the agreed price is what covers the work we planned. If priorities change, we can re-quote together.`,
+      firm: `I can't provide this for free. The agreed price covers the agreed work, and I'll keep delivering it as planned. If you want new terms, we re-scope and I quote the difference first.`,
+      two_options: `Two options. 1) We continue exactly as agreed: same work, same price, same schedule. 2) We re-scope and I quote the difference first. Which works?`,
+    };
+  }
+
   const twoOptions = remaining
-    ? `Option 1: I take on the extra work (${summary}) as a change order for ${total} (${hours}h), delivered on the current schedule. Option 2: I swap it for one of the ${remaining} revision rounds still available at no extra cost, so it stays inside the agreed price. Which one works for you?`
-    : `Option 1: I take on the extra work (${summary}) as a change order for ${total} (${hours}h). Option 2: we trim it down to the smallest useful part and keep it inside the current scope. Which one works for you?`;
+    ? `Option 1: I deliver it (${summary}) as a change order for ${total} (${hours}h). Option 2: it goes in as one of your ${remaining} remaining revision rounds, no extra cost. Which one?`
+    : `Option 1: I deliver it (${summary}) as a change order for ${total} (${hours}h). Option 2: we trim it to the smallest useful part inside the current scope. Which one?`;
 
   return {
-    warm: `Hey! Happy to sort this out. The extra work (${summary}) is a bit outside what we agreed, so I have priced it as a change order of ${total} for ${hours}h. Give me the go ahead and I will start.`,
-    firm: `Hi, this one sits outside the scope we agreed, so I would take it on as a change order of ${total} for ${hours}h. It does not affect the rest of the job. Shall I proceed?`,
-    two_options: `Here are two ways forward. ${twoOptions}`,
+    warm: `Happy to do it. It sits outside what we agreed, so it's a ${total} change order for ${hours}h - say go and I'll start.`,
+    firm: `This is outside the agreed scope, so I'd take it on as a change order: ${total} for ${hours}h. The rest of the job is unaffected. Shall I proceed?`,
+    two_options: `Two ways forward. ${twoOptions}`,
   };
 }
 
@@ -431,7 +442,6 @@ function pricing(context: OfflineContext) {
 
 /** Proposal: the deliverables from the brief, plus safe defaults. */
 function proposal(context: OfflineContext) {
-  const title = context.projectTitle ?? 'the project';
   const lines = (context.description ?? '')
     .split(/[.\n]/)
     .map((line) => line.trim())
@@ -443,7 +453,6 @@ function proposal(context: OfflineContext) {
       : ['The deliverables described in the brief.'];
 
   return {
-    intro: `Thanks for the brief on ${title}. I work on this kind of job every week and can start as soon as you confirm.`,
     included,
     exclusions: [
       'Anything not listed above.',
@@ -451,7 +460,6 @@ function proposal(context: OfflineContext) {
       'Work started before the content and files are delivered.',
     ],
     revisions_included: 2,
-    closing: 'If the scope looks right, say the word and I will get started.',
   };
 }
 

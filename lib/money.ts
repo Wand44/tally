@@ -187,3 +187,12 @@ export function formatMoney(cents: number, currency = 'USD'): string {
     maximumFractionDigits: 2,
   }).format(cents / 100);
 }
+
+/** Rounded to whole units for display, e.g. 123450 cents -> "$1,235". */
+export function formatMoneyRounded(cents: number, currency = 'USD'): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency,
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}

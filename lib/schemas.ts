@@ -79,13 +79,11 @@ export const pricingSchema = z.object({
 });
 export type PricingAnalysis = z.infer<typeof pricingSchema>;
 
-/** The Proposal (F4): the prose the freelancer sends. The price and the
- * timeline are added in code, never written by the model. */
+/** The Proposal (F4): the scope lists the model writes. The price, the
+ * timeline and the revision count are added in code, never by the model. */
 export const proposalSchema = z.object({
-  intro: z.string().min(1),
   included: z.array(z.string().min(1)).min(1),
   exclusions: z.array(z.string().min(1)).min(1),
   revisions_included: z.number().int().min(0).max(10),
-  closing: z.string().min(1),
 });
 export type ProposalDraft = z.infer<typeof proposalSchema>;

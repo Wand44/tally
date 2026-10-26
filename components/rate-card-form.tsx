@@ -1,12 +1,71 @@
 'use client';
 
-import { useActionState, useState } from 'react';
+import { useActionState, useState, type ReactNode } from 'react';
 import { saveRateCard, type RateCardState } from '@/app/actions';
 import { floorProtectedTargetPrice, formatMoney, netHourlyRate } from '@/lib/money';
 
 const initialState: RateCardState = { ok: false };
 
 const PREVIEW_HOURS = 10;
+
+function StepNumberInput({
+  id,
+  name,
+  label,
+  hint,
+  error,
+  value,
+  onChange,
+}: {
+  id: string;
+  name: string;
+  label: string;
+  hint?: ReactNode;
+  error?: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const bump = (delta: number) => {
+    const next = Math.max(0, Math.round(((Number(value) || 0) + delta) * 100) / 100);
+    onChange(String(next));
+  };
+
+  return (
+    <div>
+      <label className="label" htmlFor={id}>
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          name={name}
+          className="input pr-9"
+          type="number"
+          inputMode="decimal"
+          step="any"
+          min="0"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          required
+        />
+        <div className="absolute inset-y-1 right-1.5 flex flex-col justify-center gap-0.5">
+          <button type="button" className="step-btn" aria-label={`Increase ${label}`} onClick={() => bump(1)}>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 15l6-6 6 6" />
+            </svg>
+          </button>
+          <button type="button" className="step-btn" aria-label={`Decrease ${label}`} onClick={() => bump(-1)}>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      {hint ? <p className="hint">{hint}</p> : null}
+      {error ? <p className="hint text-bad">{error}</p> : null}
+    </div>
+  );
+}
 
 export function RateCardForm({
   defaults,
@@ -26,6 +85,7 @@ export function RateCardForm({
   const [base, setBase] = useState(defaults.baseHourlyRate);
   const [min, setMin] = useState(defaults.minHourlyRate);
   const [fee, setFee] = useState(defaults.feePercent);
+  const [weekly, setWeekly] = useState(defaults.typicalWeeklyHours);
   const [currency, setCurrency] = useState(defaults.currency || 'USD');
 
   const baseCents = Math.round(Number(base || 0) * 100);
@@ -108,83 +168,46 @@ export function RateCardForm({
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor="baseHourlyRate">
-            Base hourly rate
-          </label>
-          <input
-            id="baseHourlyRate"
-            name="baseHourlyRate"
-            className="input"
-            type="number"
-            step="any"
-            min="0"
-            value={base}
-            onChange={(e) => setBase(e.target.value)}
-            required
-          />
-          <p className="hint">What you normally charge per hour.</p>
-          {error('baseHourlyRate') ? <p className="hint text-bad">{error('baseHourlyRate')}</p> : null}
-        </div>
+        <StepNumberInput
+          id="baseHourlyRate"
+          name="baseHourlyRate"
+          label="Base hourly rate"
+          hint="What you normally charge per hour."
+          error={error('baseHourlyRate')}
+          value={base}
+          onChange={setBase}
+        />
 
-        <div>
-          <label className="label" htmlFor="minHourlyRate">
-            Minimum acceptable rate
-          </label>
-          <input
-            id="minHourlyRate"
-            name="minHourlyRate"
-            className="input"
-            type="number"
-            step="any"
-            min="0"
-            value={min}
-            onChange={(e) => setMin(e.target.value)}
-            required
-          />
-          <p className="hint">Your floor. Tally never prices a job below it.</p>
-          {error('minHourlyRate') ? <p className="hint text-bad">{error('minHourlyRate')}</p> : null}
-        </div>
+        <StepNumberInput
+          id="minHourlyRate"
+          name="minHourlyRate"
+          label="Minimum acceptable rate"
+          hint="Your floor. Tally never prices a job below it."
+          error={error('minHourlyRate')}
+          value={min}
+          onChange={setMin}
+        />
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <div>
-          <label className="label" htmlFor="feePercent">
-            Platform fee (%)
-          </label>
-          <input
-            id="feePercent"
-            name="feePercent"
-            className="input"
-            type="number"
-            step="0.5"
-            min="0"
-            max="99"
-            value={fee}
-            onChange={(e) => setFee(e.target.value)}
-            required
-          />
-          <p className="hint">20 is typical for marketplaces.</p>
-          {error('feePercent') ? <p className="hint text-bad">{error('feePercent')}</p> : null}
-        </div>
+        <StepNumberInput
+          id="feePercent"
+          name="feePercent"
+          label="Platform fee (%)"
+          hint="20 is typical for marketplaces."
+          error={error('feePercent')}
+          value={fee}
+          onChange={setFee}
+        />
 
-        <div>
-          <label className="label" htmlFor="typicalWeeklyHours">
-            Typical weekly hours
-          </label>
-          <input
-            id="typicalWeeklyHours"
-            name="typicalWeeklyHours"
-            className="input"
-            type="number"
-            step="1"
-            min="1"
-            max="80"
-            defaultValue={defaults.typicalWeeklyHours}
-            required
-          />
-          {error('typicalWeeklyHours') ? <p className="hint text-bad">{error('typicalWeeklyHours')}</p> : null}
-        </div>
+        <StepNumberInput
+          id="typicalWeeklyHours"
+          name="typicalWeeklyHours"
+          label="Typical weekly hours"
+          error={error('typicalWeeklyHours')}
+          value={weekly}
+          onChange={setWeekly}
+        />
       </div>
 
       {preview ? (

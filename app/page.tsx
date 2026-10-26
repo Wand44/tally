@@ -4,7 +4,7 @@ import { RiskBadge } from '@/components/risk-badge';
 import { SiteHeader } from '@/components/site-header';
 import { StatCard } from '@/components/stat-card';
 import { getDashboardData, getWorkspace } from '@/lib/dashboard';
-import { formatMoney } from '@/lib/money';
+import { formatMoney, formatMoneyRounded } from '@/lib/money';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,7 +63,7 @@ export default async function DashboardPage() {
           <StatCard
             label="Extra work caught"
             value={<AnimatedNumber value={data.stats.extraHoursCaught} variant="hours" />}
-            hint={`${formatMoney(data.stats.extraCentsCaught, currency)} billed · ${formatMoney(data.stats.extraNetCentsCaught, currency)} kept after fee`}
+            hint={`${formatMoneyRounded(data.stats.extraCentsCaught, currency)} billed · ${formatMoneyRounded(data.stats.extraNetCentsCaught, currency)} kept after fee`}
           />
           <StatCard
             label="Change orders sent"
@@ -137,58 +137,58 @@ export default async function DashboardPage() {
 
           <div className="card">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Active projects</h2>
+              <h2 className="font-semibold">Orders</h2>
               <span className="text-xs text-muted">{data.stats.activeProjects} active</span>
             </div>
             {data.projects.filter((project) => project.status === 'active').length === 0 ? (
-              <p className="mt-4 text-sm text-muted">No active projects.</p>
+              <p className="mt-4 text-sm text-muted">No Orders.</p>
             ) : (
               <ul className="mt-4 space-y-4">
                 {data.projects
                   .filter((project) => project.status === 'active')
                   .map((project) => (
-                    <li key={project.id} className="rounded-xl border border-line p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <Link
-                            href={`/projects/${project.id}`}
-                            className="truncate text-sm font-medium hover:underline"
-                          >
-                            {project.title}
-                          </Link>
-                          <p className="truncate text-xs text-muted">
-                            {project.clientName}
-                            {project.clientCompany ? ` · ${project.clientCompany}` : ''}
+                    <li key={project.id}>
+                      <Link
+                        href="/orders"
+                        className="block rounded-xl border border-line p-4 transition hover:bg-panel-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium">{project.title}</p>
+                            <p className="truncate text-xs text-muted">
+                              {project.clientName}
+                              {project.clientCompany ? ` · ${project.clientCompany}` : ''}
+                            </p>
+                          </div>
+                          <span className="badge bg-accent-soft text-accent">
+                            {formatMoney(project.netHourlyCents, currency)}/h net
+                          </span>
+                        </div>
+                        <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
+                          <div>
+                            <dt className="text-muted">Agreed</dt>
+                            <dd className="font-medium">{formatMoney(project.agreedPriceCents, currency)}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted">Hours</dt>
+                            <dd className="font-medium">{project.estimatedHours}h</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted">Clauses</dt>
+                            <dd className="font-medium">{project.clauseCount}</dd>
+                          </div>
+                          <div>
+                            <dt className="text-muted">Deadline</dt>
+                            <dd className="font-medium">{project.deadline ?? '—'}</dd>
+                          </div>
+                        </dl>
+                        {project.changeOrderCount > 0 ? (
+                          <p className="mt-3 text-xs text-muted">
+                            {project.changeOrderCount} change order{project.changeOrderCount === 1 ? '' : 's'} ·{' '}
+                            {formatMoneyRounded(project.extraCentsCaught, currency)} extra billed
                           </p>
-                        </div>
-                        <span className="badge bg-accent-soft text-accent">
-                          {formatMoney(project.netHourlyCents, currency)}/h net
-                        </span>
-                      </div>
-                      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-4">
-                        <div>
-                          <dt className="text-muted">Agreed</dt>
-                          <dd className="font-medium">{formatMoney(project.agreedPriceCents, currency)}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted">Hours</dt>
-                          <dd className="font-medium">{project.estimatedHours}h</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted">Clauses</dt>
-                          <dd className="font-medium">{project.clauseCount}</dd>
-                        </div>
-                        <div>
-                          <dt className="text-muted">Deadline</dt>
-                          <dd className="font-medium">{project.deadline ?? '—'}</dd>
-                        </div>
-                      </dl>
-                      {project.changeOrderCount > 0 ? (
-                        <p className="mt-3 text-xs text-muted">
-                          {project.changeOrderCount} change order{project.changeOrderCount === 1 ? '' : 's'} ·{' '}
-                          {formatMoney(project.extraCentsCaught, currency)} extra billed
-                        </p>
-                      ) : null}
+                        ) : null}
+                      </Link>
                     </li>
                   ))}
               </ul>

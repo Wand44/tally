@@ -1,13 +1,108 @@
 import Link from 'next/link';
-import { eq } from 'drizzle-orm';
+import { desc, eq } from 'drizzle-orm';
 import { SiteHeader } from '@/components/site-header';
 import { getDb, schema } from '@/db';
-import { formatMoney } from '@/lib/money';
+import { formatMoney, formatMoneyRounded } from '@/lib/money';
 import { getWorkspace } from '@/lib/dashboard';
 import { OrdersActions } from './orders-actions';
 import { OrdersAdd } from './orders-add';
 
 export const dynamic = 'force-dynamic';
+
+interface OrderRow {
+  id: string;
+  title: string;
+  status: string;
+  clientName: string;
+  clientId: string;
+  agreedPriceCents: number;
+  estimatedHours: number;
+  deadline: string | null;
+  createdAt: Date;
+}
+
+interface OrderCounts {
+  total: number;
+  sent: number;
+  draft: number;
+  sum: number;
+}
+
+function OrderCard({
+  row,
+  counts,
+  currency,
+}: {
+  row: OrderRow;
+  counts: OrderCounts;
+  currency: string;
+}) {
+  const completed = row.status === 'completed';
+  const added = new Date(row.createdAt).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  return (
+    <article className="card">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <Link href={`/projects/${row.id}`} className="group inline-flex items-center gap-1.5 text-lg font-medium">
+            <span className="group-hover:underline">{row.title}</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-label="View project" className="text-muted">
+              <path d="M7 17L17 7" />
+              <path d="M8 7h9v9" />
+            </svg>
+          </Link>
+          <p className="mt-1 text-sm text-muted">
+            <Link href={`/clients/${row.clientId}`} className="hover:underline">
+              {row.clientName}
+            </Link>
+            {` · Added ${added}`}
+            {row.deadline ? ` · Due ${row.deadline}` : ''}
+          </p>
+        </div>
+        <span
+          className={
+            completed ? 'badge border-line text-muted' : 'badge border-good/60 text-good'
+          }
+        >
+          {row.status === 'active' ? 'Active' : row.status}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div>
+          <p className="card-title">Agreed</p>
+          <p className="mt-2 font-medium">{formatMoney(row.agreedPriceCents, currency)}</p>
+        </div>
+        <div>
+          <p className="card-title">Hours</p>
+          <p className="mt-2 font-medium">{row.estimatedHours}h</p>
+        </div>
+        <div>
+          <p className="card-title">Change orders</p>
+          <p className="mt-2 font-medium">
+            {counts.total} ({counts.sent} sent / {counts.draft} draft)
+          </p>
+        </div>
+        <div>
+          <p className="card-title">Extra billed</p>
+          <p className="mt-2 font-medium">{formatMoneyRounded(counts.sum, currency)}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        {!completed ? (
+          <Link href={`/guardian?project=${row.id}`} className="btn">
+            Check message
+          </Link>
+        ) : null}
+        <OrdersActions projectId={row.id} status={row.status} />
+      </div>
+    </article>
+  );
+}
 
 export default async function OrdersPage() {
   const db = getDb();
@@ -25,24 +120,23 @@ export default async function OrdersPage() {
       agreedPriceCents: projects.agreedPriceCents,
       estimatedHours: projects.estimatedHours,
       deadline: projects.deadline,
+      createdAt: projects.createdAt,
     })
     .from(projects)
     .innerJoin(clients, eq(projects.clientId, clients.id))
-    .orderBy(projects.createdAt);
+    .orderBy(desc(projects.createdAt));
 
   const clientRows = await db.select({ id: clients.id, name: clients.name }).from(clients);
 
   const orderCounts = await db
     .select({
       projectId: changeOrders.projectId,
-      id: changeOrders.id,
       status: changeOrders.status,
       totalCents: changeOrders.totalCents,
-      netCents: changeOrders.netCents,
     })
     .from(changeOrders);
 
-  const counts = new Map<string, { total: number; sent: number; draft: number; sum: number }>();
+  const counts = new Map<string, OrderCounts>();
   for (const o of orderCounts) {
     const cur = counts.get(o.projectId) ?? { total: 0, sent: 0, draft: 0, sum: 0 };
     cur.total += 1;
@@ -54,6 +148,10 @@ export default async function OrdersPage() {
     }
     counts.set(o.projectId, cur);
   }
+
+  const countFor = (id: string) => counts.get(id) ?? { total: 0, sent: 0, draft: 0, sum: 0 };
+  const activeRows = rows.filter((row) => row.status !== 'completed');
+  const completedRows = rows.filter((row) => row.status === 'completed');
 
   return (
     <>
@@ -79,68 +177,40 @@ export default async function OrdersPage() {
             <p className="text-sm text-muted">No projects yet.</p>
           </div>
         ) : (
-          <div className="mt-6 space-y-3">
-            {rows.map((row) => {
-              const c = counts.get(row.id) ?? { total: 0, sent: 0, draft: 0, sum: 0 };
-              return (
-                <article key={row.id} className="card">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <Link href={`/projects/${row.id}`} className="text-lg font-medium hover:underline">
-                        {row.title}
-                      </Link>
-                      <p className="mt-1 text-sm text-muted">
-                        <Link href={`/clients/${row.clientId}`} className="hover:underline">
-                          {row.clientName}
-                        </Link>
-                        {row.deadline ? ` · Due ${row.deadline}` : ''}
-                      </p>
-                    </div>
-                    <span
-                      className={
-                        row.status === 'active'
-                          ? 'badge border-good/60 text-good'
-                          : 'badge border-line text-muted'
-                      }
-                    >
-                      {row.status === 'active' ? 'Active' : row.status}
-                    </span>
-                  </div>
+          <>
+            <div className="mt-6 space-y-3">
+              {activeRows.map((row) => (
+                <OrderCard key={row.id} row={row} counts={countFor(row.id)} currency={currency} />
+              ))}
+            </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-4">
-                    <div>
-                      <p className="card-title">Agreed</p>
-                      <p className="mt-2 font-medium">{formatMoney(row.agreedPriceCents, currency)}</p>
-                    </div>
-                    <div>
-                      <p className="card-title">Hours</p>
-                      <p className="mt-2 font-medium">{row.estimatedHours}h</p>
-                    </div>
-                    <div>
-                      <p className="card-title">Change orders</p>
-                      <p className="mt-2 font-medium">
-                        {c.total} ({c.sent} sent / {c.draft} draft)
-                      </p>
-                    </div>
-                    <div>
-                      <p className="card-title">Extra billed</p>
-                      <p className="mt-2 font-medium">{formatMoney(c.sum, currency)}</p>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    <Link href={`/projects/${row.id}`} className="btn">
-                      View project
-                    </Link>
-                    <Link href={`/guardian?project=${row.id}`} className="btn">
-                      Check message
-                    </Link>
-                    <OrdersActions projectId={row.id} status={row.status} />
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+            {completedRows.length > 0 ? (
+              <details className="group mt-6">
+                <summary className="flex cursor-pointer select-none items-center gap-2 text-sm font-medium text-muted hover:text-fg">
+                  <svg
+                    className="transition group-open:rotate-90"
+                    width="12"
+                    height="12"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                  Completed ({completedRows.length})
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {completedRows.map((row) => (
+                    <OrderCard key={row.id} row={row} counts={countFor(row.id)} currency={currency} />
+                  ))}
+                </div>
+              </details>
+            ) : null}
+          </>
         )}
       </main>
     </>

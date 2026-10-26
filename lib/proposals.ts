@@ -15,7 +15,6 @@ export type ProposalTone = 'friendly' | 'formal';
 
 export interface Proposal {
   title: string;
-  intro: string;
   included: string[];
   exclusions: string[];
   revisionsIncluded: number;
@@ -24,7 +23,6 @@ export interface Proposal {
   currency: string;
   deliveryDays: number;
   deliveryDate: string;
-  closing: string;
   /** 'nebius' or 'offline'. */
   provider: string;
   /** The terms the scope extractor can read. */
@@ -80,8 +78,6 @@ export function proposalScopeTerms(input: {
 /** The proposal as the client reads it. The price and the timeline are added
  * here in code - the model never writes a number. */
 export function proposalText(input: {
-  title: string;
-  intro: string;
   included: string[];
   exclusions: string[];
   revisionsIncluded: number;
@@ -91,17 +87,10 @@ export function proposalText(input: {
   currency: string;
   deliveryDays: number;
   deliveryDate: string;
-  closing: string;
-  freelancerName: string;
-  skills: string[];
 }): string {
   const bullets = (items: string[]) => items.map((item) => `- ${item}`).join('\n');
 
   return [
-    `Hi,`,
-    '',
-    input.intro,
-    '',
     `What is included:`,
     bullets(input.included),
     '',
@@ -111,11 +100,6 @@ export function proposalText(input: {
     `Price: ${formatMoney(input.priceCents, input.currency)} for ${input.hours} hours of work (my rate is ${formatMoney(input.hourlyRateCents, input.currency)}/h, platform fee included).`,
     `Delivery: within ${input.deliveryDays} working days (by ${input.deliveryDate}).`,
     `Revisions: ${input.revisionsIncluded} round${input.revisionsIncluded === 1 ? '' : 's'} included.`,
-    '',
-    input.closing,
-    '',
-    input.freelancerName,
-    input.skills.join(' · '),
   ].join('\n');
 }
 
@@ -175,7 +159,6 @@ export async function generateProposal(input: {
 
   return {
     title: quote.title,
-    intro: draft.data.intro,
     included: draft.data.included,
     exclusions: draft.data.exclusions,
     revisionsIncluded: draft.data.revisions_included,
@@ -184,12 +167,9 @@ export async function generateProposal(input: {
     currency,
     deliveryDays,
     deliveryDate: date,
-    closing: draft.data.closing,
     provider: draft.provider,
     scopeTerms,
     text: proposalText({
-      title: quote.title,
-      intro: draft.data.intro,
       included: draft.data.included,
       exclusions: draft.data.exclusions,
       revisionsIncluded: draft.data.revisions_included,
@@ -199,9 +179,6 @@ export async function generateProposal(input: {
       currency,
       deliveryDays,
       deliveryDate: date,
-      closing: draft.data.closing,
-      freelancerName: workspace.profile.name,
-      skills,
     }),
   };
 }

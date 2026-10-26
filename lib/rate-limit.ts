@@ -3,8 +3,12 @@ import { getDb, schema } from '@/db';
 
 const { rateLimits } = schema;
 
-/** How many AI runs one client may do per hour. */
-export const DEFAULT_LIMIT = 20;
+/**
+ * How many AI runs one client may do per hour. Override with
+ * AI_RUNS_PER_HOUR in the environment; 20 is the safe demo default.
+ */
+const envLimit = Number(process.env.AI_RUNS_PER_HOUR);
+export const DEFAULT_LIMIT = Number.isFinite(envLimit) && envLimit > 0 ? envLimit : 20;
 
 const WINDOW_MS = 60 * 60 * 1000;
 

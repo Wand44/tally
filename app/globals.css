@@ -197,6 +197,17 @@ main > * {
     @apply mb-1.5 block text-sm font-medium text-fg;
   }
 
+  .label:has(+ .input[required])::after,
+  .label:has(+ div .input[required])::after {
+    content: '*';
+    color: var(--accent);
+    margin-left: 0.25em;
+  }
+
+  .step-btn {
+    @apply flex h-4 w-6 items-center justify-center rounded-sm border border-accent/50 bg-accent-soft text-accent transition hover:border-accent hover:bg-accent hover:text-accent-fg;
+  }
+
   .hint {
     @apply mt-1 text-xs text-muted;
   }

@@ -38,9 +38,9 @@ export interface DashboardStats {
   changeOrdersDraft: number;
   activeProjects: number;
   clientsTracked: number;
-  /** Hours actually billed across active projects (scope + change orders). */
+  /** Hours actually billed across Orders (scope + change orders). */
   totalHours: number;
-  /** Weighted average net rate across active projects, in cents per hour. */
+  /** Weighted average net rate across Orders, in cents per hour. */
   avgNetHourlyCents: number;
 }
 

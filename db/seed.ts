@@ -1,5 +1,5 @@
 /**
- * Seed the demo workspace: 1 freelancer, 3 clients, 2 active projects and a
+ * Seed the demo workspace: 1 freelancer, 3 clients, 2 Orders and a
  * few weeks of Guardian history so the dashboard has something to show.
  *
  * Run with: npm run db:seed
