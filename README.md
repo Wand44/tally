@@ -1,7 +1,5 @@
 # Tally — the AI chief of staff for freelancers
 
-**Live demo: [tally-six-liard.vercel.app](https://tally-six-liard.vercel.app/)** (seeded workspace - feel free to click around; AI runs are capped per IP per hour)
-
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat" alt="MIT License" /></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.4-black?logo=next.js" alt="Next.js" /></a>
@@ -14,6 +12,11 @@
 </p>
 
 > Win the gig. Price it right. Protect the scope.
+
+**Live demo: [tally-six-liard.vercel.app](https://tally-six-liard.vercel.app/)** — seeded
+workspace, no signup. All inference runs on Nebius Token Factory (NVIDIA
+Nemotron-3-Nano fast tier, Kimi-K3 smart tier), app hosted on Vercel, database
+on Turso.
 
 Tally keeps one shared memory across a freelance job: your rate card prices the
 quote *and* the change order, the agreed terms become the scope you defend, and
