@@ -1,5 +1,7 @@
 # Tally — the AI chief of staff for freelancers
 
+**Live demo: [tally-six-liard.vercel.app](https://tally-six-liard.vercel.app/)** (seeded workspace - feel free to click around; AI runs are capped per IP per hour)
+
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat" alt="MIT License" /></a>
   <a href="https://nextjs.org/"><img src="https://img.shields.io/badge/Next.js-16.4-black?logo=next.js" alt="Next.js" /></a>
@@ -36,19 +38,6 @@ npm run build       # production build
 
 Without API keys everything still works: Tally falls back to deterministic
 offline rules and a small sample search set, and the UI says so.
-
-## Nebius + NVIDIA inside
-
-Built for the **Nebius x NVIDIA Global AI Hackathon** (Best Apps and Agents).
-
-- **All inference runs on Nebius Token Factory** — one wrapper (`lib/llm.ts`)
-  is the only call site, so the API key never leaves the server.
-- **NVIDIA open source model** — `NVIDIA-Nemotron-3-Nano-30B-A3B` is the fast
-  tier: message triage and every gig posting Radar reads. Cheap calls, so the
-  demo stays responsive and credits stretch.
-- A frontier model handles the reasoning tier (scope verdicts, pricing
-  rationale, reply drafts). `npm run eval` compares both tiers on 25 labelled
-  cases, including prompt-injection resistance.
 
 ## The tools
 
