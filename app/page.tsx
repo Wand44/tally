@@ -62,7 +62,7 @@ export default async function DashboardPage() {
         <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Extra work caught"
-            value={<AnimatedNumber value={data.stats.extraHoursCaught} suffix="h" />}
+            value={<AnimatedNumber value={data.stats.extraHoursCaught} variant="hours" />}
             hint={`${formatMoney(data.stats.extraCentsCaught, currency)} billed · ${formatMoney(data.stats.extraNetCentsCaught, currency)} kept after fee`}
           />
           <StatCard
@@ -72,7 +72,9 @@ export default async function DashboardPage() {
           />
           <StatCard
             label="Net hourly rate"
-            value={<AnimatedNumber value={Math.round(data.stats.avgNetHourlyCents / 100)} prefix={currency === 'USD' ? '$' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : ''} suffix="/h" />}
+            value={
+              <AnimatedNumber value={data.stats.avgNetHourlyCents} variant="money" currency={currency} suffix="/h" />
+            }
             hint={`Across ${data.stats.activeProjects} active project${data.stats.activeProjects === 1 ? '' : 's'}`}
           />
           <StatCard

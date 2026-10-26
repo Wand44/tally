@@ -6,7 +6,6 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getDb, schema } from '@/db';
-import { seedDemoWorkspace } from '@/db/seed';
 import { getWorkspace } from '@/lib/dashboard';
 import { findStoredOutcome, runGuardian } from '@/lib/guardian';
 import { completeJson } from '@/lib/llm';
@@ -153,6 +152,9 @@ export async function extractScope(projectId: string, agreedTerms: string): Prom
 
   const terms = agreedTerms.trim() || project.agreedTerms;
   if (!terms) return { ok: false, message: 'Paste the agreed terms first.' };
+
+  const allowed = await allowAiRun();
+  if (!allowed.ok) return { ok: false, message: allowed.message };
 
   const result = await completeJson({
     task: 'scope',
@@ -426,13 +428,100 @@ export async function generateProposalAction(input: {
 }
 
 /* ------------------------------------------------------------------ */
-/* F8: demo mode                                                        */
+/* Orders                                                               */
 /* ------------------------------------------------------------------ */
 
-export async function loadDemoAction(): Promise<void> {
-  const workspace = await getWorkspace();
-  if (!workspace) {
-    await seedDemoWorkspace();
+const createOrderSchema = z.object({
+  title: z.string().trim().min(1, 'A title is required'),
+  clientId: z.string(),
+  newClient: z.string().trim(),
+  agreedPrice: z.coerce.number().positive('The agreed price must be above 0'),
+  hours: z.coerce.number().positive('The hours must be above 0').max(1000, 'That is more than 25 weeks'),
+});
+
+/** Orders: add a new project, creating the client row when a new name is given. */
+export async function createOrderAction(
+  _previous: { ok: boolean; message?: string; errors?: Record<string, string> },
+  formData: FormData,
+): Promise<{ ok: boolean; message?: string; errors?: Record<string, string> }> {
+  const parsed = createOrderSchema.safeParse({
+    title: formData.get('title'),
+    clientId: formData.get('clientId') ?? '',
+    newClient: formData.get('newClient') ?? '',
+    agreedPrice: formData.get('agreedPrice'),
+    hours: formData.get('hours'),
+  });
+  if (!parsed.success) {
+    const errors: Record<string, string> = {};
+    for (const issue of parsed.error.issues) {
+      const key = String(issue.path[0] ?? 'form');
+      errors[key] ??= issue.message;
+    }
+    return { ok: false, message: 'Check the highlighted fields.', errors };
   }
-  redirect('/');
+
+  const db = getDb();
+  const { clients, projects } = schema;
+
+  let clientId: string;
+  if (parsed.data.newClient) {
+    clientId = crypto.randomUUID();
+    await db.insert(clients).values({ id: clientId, name: parsed.data.newClient, createdAt: new Date() });
+  } else if (parsed.data.clientId) {
+    const [client] = await db.select().from(clients).where(eq(clients.id, parsed.data.clientId)).limit(1);
+    if (!client) return { ok: false, message: 'Pick an existing client or type a new one.' };
+    clientId = client.id;
+  } else {
+    return { ok: false, errors: { clientId: 'Pick a client or type a new name' } };
+  }
+
+  await db.insert(projects).values({
+    id: crypto.randomUUID(),
+    clientId,
+    title: parsed.data.title,
+    status: 'active',
+    agreedPriceCents: Math.round(parsed.data.agreedPrice * 100),
+    estimatedHours: parsed.data.hours,
+    agreedTerms: '',
+    revisionsUsed: 0,
+    createdAt: new Date(),
+  });
+
+  revalidatePath('/');
+  revalidatePath('/orders');
+  return { ok: true };
+}
+
+/** Orders: mark project complete or reopen it. */
+export async function completeProjectAction(projectId: string) {
+  const db = getDb();
+  const { projects } = schema;
+  await db.update(projects).set({ status: 'completed' }).where(eq(projects.id, projectId));
+  revalidatePath('/');
+  revalidatePath('/orders');
+  return { ok: true };
+}
+
+export async function reopenProjectAction(projectId: string) {
+  const db = getDb();
+  const { projects } = schema;
+  await db.update(projects).set({ status: 'active' }).where(eq(projects.id, projectId));
+  revalidatePath('/');
+  revalidatePath('/orders');
+  return { ok: true };
+}
+
+export async function deleteProjectAction(projectId: string) {
+  const db = getDb();
+  const { changeOrders, messages, projects, scopeClauses, verdicts } = schema;
+  // shortcut: children deleted by hand because SQLite foreign keys are not
+  // enforced here; upgrade when the client runs with PRAGMA foreign_keys=ON.
+  await db.delete(changeOrders).where(eq(changeOrders.projectId, projectId));
+  await db.delete(verdicts).where(eq(verdicts.projectId, projectId));
+  await db.delete(messages).where(eq(messages.projectId, projectId));
+  await db.delete(scopeClauses).where(eq(scopeClauses.projectId, projectId));
+  await db.delete(projects).where(eq(projects.id, projectId));
+  revalidatePath('/');
+  revalidatePath('/orders');
+  return { ok: true };
 }

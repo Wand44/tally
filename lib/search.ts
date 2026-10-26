@@ -21,11 +21,6 @@ export interface SearchOutcome {
 
 const TAVILY_ENDPOINT = 'https://api.tavily.com/search';
 
-/** True when Tavily is configured and will actually be called. */
-export function isSearchConfigured(): boolean {
-  return Boolean(process.env.TAVILY_API_KEY);
-}
-
 /**
  * Sample postings used when no Tavily key is set. The URLs point at
  * example.com on purpose: they are placeholders, not real postings.
@@ -121,7 +116,11 @@ function offlineResults(query: string, maxResults: number): SearchResult[] {
   return source.slice(0, maxResults);
 }
 
-export async function searchWeb(query: string, maxResults = 10): Promise<SearchOutcome> {
+export async function searchWeb(
+  query: string,
+  maxResults = 10,
+  domains?: string[],
+): Promise<SearchOutcome> {
   const apiKey = process.env.TAVILY_API_KEY;
 
   if (!apiKey) {
@@ -132,6 +131,7 @@ export async function searchWeb(query: string, maxResults = 10): Promise<SearchO
     const response = await fetch(TAVILY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(15_000),
       body: JSON.stringify({
         query,
         search_depth: 'basic',
@@ -139,6 +139,7 @@ export async function searchWeb(query: string, maxResults = 10): Promise<SearchO
         max_results: maxResults,
         include_answer: false,
         include_raw_content: false,
+        ...(domains && domains.length > 0 ? { include_domains: domains } : {}),
       }),
     });
 

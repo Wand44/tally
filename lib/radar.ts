@@ -177,13 +177,16 @@ export interface RadarOutcome {
   searchProvider: string;
 }
 
+/** Real gig postings live on the marketplaces; rate pages live on blogs (Pricer searches domain-free). */
+const MARKETPLACE_DOMAINS = ['upwork.com', 'fiverr.com', 'freelancer.com', 'guru.com'];
+
 export async function runRadar(input: {
   query: string;
   skills: string[];
   minHourlyRateCents: number;
   currency: string;
 }): Promise<RadarOutcome> {
-  const search = await searchWeb(input.query, 10);
+  const search = await searchWeb(input.query, 10, MARKETPLACE_DOMAINS);
 
   const extraction = await completeJson({
     task: 'radar',

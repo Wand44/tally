@@ -1,15 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { formatMoney } from '@/lib/money';
 
 export function AnimatedNumber({
   value,
-  prefix = '',
+  variant = 'plain',
+  currency = 'USD',
   suffix = '',
   duration = 800,
 }: {
   value: number;
-  prefix?: string;
+  /** plain: whole numbers · hours: one decimal when fractional, adds h · money: cents with currency. */
+  variant?: 'plain' | 'hours' | 'money';
+  currency?: string;
   suffix?: string;
   duration?: number;
 }) {
@@ -27,7 +31,7 @@ export function AnimatedNumber({
       const elapsed = now - start;
       const progress = Math.min(elapsed / duration, 1);
       const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(value * eased));
+      setDisplay(value * eased);
       if (progress < 1) frame = requestAnimationFrame(tick);
     }
 
@@ -35,11 +39,10 @@ export function AnimatedNumber({
     return () => cancelAnimationFrame(frame);
   }, [value, duration]);
 
-  return (
-    <>
-      {prefix}
-      {display}
-      {suffix}
-    </>
-  );
+  if (variant === 'money') return <>{formatMoney(Math.round(display), currency)}{suffix}</>;
+  if (variant === 'hours') {
+    const rounded = Math.round(display * 10) / 10;
+    return <>{Number.isInteger(rounded) ? rounded : rounded.toFixed(1)}h{suffix}</>;
+  }
+  return <>{Math.round(display)}{suffix}</>;
 }

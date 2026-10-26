@@ -28,8 +28,9 @@ npm run dev                 # http://localhost:3000
 Then open <http://localhost:3000/onboarding> for your rate,
 <http://localhost:3000> for the dashboard, <http://localhost:3000/radar> to find
 gigs, <http://localhost:3000/price> to price one, <http://localhost:3000/proposal>
-to write the proposal, and <http://localhost:3000/guardian> to check a client
-message. Every number in the UI comes from the database.
+to write the proposal, <http://localhost:3000/guardian> to check a client
+message and <http://localhost:3000/orders> for every project and its change
+orders. Every number in the UI comes from the database.
 
 ```bash
 npm test          # vitest: money maths, risk scoring, scope ids, citation checks
@@ -118,7 +119,9 @@ Paste what the client wrote into <http://localhost:3000/guardian> and Tally:
 your rate card and ranks them for you:
 
 1. **Search** — the server calls Tavily (`lib/search.ts`, the only place that
-   does). The query defaults to your skills.
+   does), scoped to the freelance marketplaces (`upwork.com`, `fiverr.com`,
+   `freelancer.com`, `guru.com` via `include_domains`). The query defaults to
+   your skills.
 2. **Read** — the fast model turns each posting into strict JSON: title, source
    URL, the budget if one is stated, the requirements and the red flags (vague
    scope, wants free work, no budget).

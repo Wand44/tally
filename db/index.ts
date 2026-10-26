@@ -11,6 +11,8 @@ let db: ReturnType<typeof drizzle<typeof schema>> | undefined;
 export function getDb() {
   if (!db) {
     client = createClient({ url: databaseUrl, authToken: process.env.DATABASE_AUTH_TOKEN });
+    // Writes wait up to 5s when another process holds the file (dev server + tests).
+    void client.execute('PRAGMA busy_timeout = 5000').catch(() => {});
     db = drizzle(client, { schema });
   }
   return db;

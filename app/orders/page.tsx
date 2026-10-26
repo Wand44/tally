@@ -4,6 +4,8 @@ import { SiteHeader } from '@/components/site-header';
 import { getDb, schema } from '@/db';
 import { formatMoney } from '@/lib/money';
 import { getWorkspace } from '@/lib/dashboard';
+import { OrdersActions } from './orders-actions';
+import { OrdersAdd } from './orders-add';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,6 +30,8 @@ export default async function OrdersPage() {
     .innerJoin(clients, eq(projects.clientId, clients.id))
     .orderBy(projects.createdAt);
 
+  const clientRows = await db.select({ id: clients.id, name: clients.name }).from(clients);
+
   const orderCounts = await db
     .select({
       projectId: changeOrders.projectId,
@@ -42,9 +46,12 @@ export default async function OrdersPage() {
   for (const o of orderCounts) {
     const cur = counts.get(o.projectId) ?? { total: 0, sent: 0, draft: 0, sum: 0 };
     cur.total += 1;
-    if (o.status === 'sent' || o.status === 'accepted') cur.sent += 1;
-    else cur.draft += 1;
-    cur.sum += o.totalCents;
+    if (o.status === 'sent' || o.status === 'accepted') {
+      cur.sent += 1;
+      cur.sum += o.totalCents;
+    } else {
+      cur.draft += 1;
+    }
     counts.set(o.projectId, cur);
   }
 
@@ -61,6 +68,10 @@ export default async function OrdersPage() {
               All projects and their change orders in one place.
             </p>
           </div>
+        </div>
+
+        <div className="mt-4">
+          <OrdersAdd clients={clientRows} />
         </div>
 
         {rows.length === 0 ? (
@@ -85,7 +96,13 @@ export default async function OrdersPage() {
                         {row.deadline ? ` · Due ${row.deadline}` : ''}
                       </p>
                     </div>
-                    <span className="badge border-line text-muted">
+                    <span
+                      className={
+                        row.status === 'active'
+                          ? 'badge border-good/60 text-good'
+                          : 'badge border-line text-muted'
+                      }
+                    >
                       {row.status === 'active' ? 'Active' : row.status}
                     </span>
                   </div>
@@ -118,6 +135,7 @@ export default async function OrdersPage() {
                     <Link href={`/guardian?project=${row.id}`} className="btn">
                       Check message
                     </Link>
+                    <OrdersActions projectId={row.id} status={row.status} />
                   </div>
                 </article>
               );

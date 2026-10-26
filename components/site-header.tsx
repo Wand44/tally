@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
 import { ThemeToggle } from './theme-toggle';
 
 const navItems = [
@@ -57,7 +56,7 @@ const navItems = [
   },
 ];
 
-export function SiteHeader({ children }: { children?: ReactNode }) {
+export function SiteHeader() {
   const pathname = usePathname();
 
   return (
@@ -74,7 +73,6 @@ export function SiteHeader({ children }: { children?: ReactNode }) {
           </span>
         </Link>
         <nav className="ml-auto flex items-center gap-1 text-sm">
-          {children}
           {navItems.map((item) => {
             const active = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (

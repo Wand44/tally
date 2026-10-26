@@ -117,7 +117,7 @@ export function RateCardForm({
             name="baseHourlyRate"
             className="input"
             type="number"
-            step="1"
+            step="any"
             min="0"
             value={base}
             onChange={(e) => setBase(e.target.value)}
@@ -136,7 +136,7 @@ export function RateCardForm({
             name="minHourlyRate"
             className="input"
             type="number"
-            step="1"
+            step="any"
             min="0"
             value={min}
             onChange={(e) => setMin(e.target.value)}
