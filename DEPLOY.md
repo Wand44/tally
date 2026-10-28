@@ -7,23 +7,34 @@ AI Cloud** and **use at least one NVIDIA open source model** (deadline Oct 30,
 What we already satisfy in code:
 
 - **Inference runs on Nebius Token Factory** — every LLM call goes through
-  `lib/llm.ts` against `https://api.tokenfactory.nebius.com`.
+  `lib/llm.ts` against `https://api.tokenfactory.nebius.com/v1`.
 - **NVIDIA model** — the fast tier is `nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B`
   (triage + Radar reads). Keep at least one NVIDIA model in the pipeline; it is
   named in the README and appears in live logs.
 
 API keys stay **server-side env vars**, never in the client bundle — judges
 click the app without seeing them, and `AI_RUNS_PER_HOUR` caps the damage a
-curious IP can do to the $50 balance. Never commit `.env` (already git-ignored).
+curious IP can do to your balance. Never commit `.env` (already git-ignored).
 
----
+## Recommended model IDs (tested as responsive on Token Factory)
+
+```bash
+NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1
+MODEL_FAST=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
+MODEL_SMART=Qwen/Qwen3-235B-A22B-Instruct-2507
+```
+
+`moonshotai/Kimi-K3` was used during development, but it currently stalls on
+Token Factory (calls hang longer than Vercel's function timeout), so do **not**
+use it for the demo unless you have confirmed it is fast again.
 
 ## Option A — Nebius AI Cloud VM (safest for the rules)
 
 Everything runs on Nebius infra: inference on Token Factory, app on AI Cloud.
 
-1. **Create a VM** in the Nebius AI Cloud console: Ubuntu 24.04, 2 vCPU / 4 GB,
-   public IP, your SSH key.
+1. **Create a CPU VM** in the Nebius AI Cloud console (not a GPU instance —
+   those estimate $6k/month). Ubuntu 24.04, 2 vCPU / 4 GB, public IP, your SSH
+   key.
 2. **On the VM**:
    ```bash
    curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
@@ -37,7 +48,7 @@ Everything runs on Nebius infra: inference on Token Factory, app on AI Cloud.
    NEBIUS_API_KEY=...
    NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1
    MODEL_FAST=nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
-   MODEL_SMART=moonshotai/Kimi-K3
+   MODEL_SMART=Qwen/Qwen3-235B-A22B-Instruct-2507
    TAVILY_API_KEY=...
    AI_RUNS_PER_HOUR=200
    ```

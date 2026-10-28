@@ -131,7 +131,7 @@ export async function searchWeb(
     const response = await fetch(TAVILY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      signal: AbortSignal.timeout(15_000),
+      signal: AbortSignal.timeout(6_000),
       body: JSON.stringify({
         query,
         search_depth: 'basic',

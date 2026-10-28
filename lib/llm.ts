@@ -38,7 +38,7 @@ function getClient(): OpenAI | null {
   const apiKey = process.env.NEBIUS_API_KEY;
   const baseURL = process.env.NEBIUS_BASE_URL;
   if (!apiKey || !baseURL) return null;
-  client ??= new OpenAI({ apiKey, baseURL });
+  client ??= new OpenAI({ apiKey, baseURL, timeout: 10_000, maxRetries: 0 });
   return client;
 }
 
@@ -71,6 +71,25 @@ function extractJson(content: string): unknown {
   return JSON.parse(cleaned.slice(start, end + 1));
 }
 
+function runOffline<T>(options: {
+  task: OfflineTask;
+  schema: z.ZodType<T>;
+  offline: OfflineContext;
+  latencyMs: number;
+  attempts: number;
+}): LlmResult<T> {
+  const started = Date.now();
+  const data = options.schema.parse(JSON.parse(offlineResponse(options.task, options.offline)));
+  return {
+    data,
+    provider: 'offline',
+    model: 'offline-rules',
+    usage: null,
+    attempts: options.attempts,
+    latencyMs: options.latencyMs + Date.now() - started,
+  };
+}
+
 export async function completeJson<T>(options: {
   task: OfflineTask;
   tier: ModelTier;
@@ -82,20 +101,12 @@ export async function completeJson<T>(options: {
   const openai = getClient();
 
   if (!openai) {
-    const started = Date.now();
-    const data = options.schema.parse(JSON.parse(offlineResponse(options.task, options.offline)));
-    return {
-      data,
-      provider: 'offline',
-      model: 'offline-rules',
-      usage: null,
-      attempts: 1,
-      latencyMs: Date.now() - started,
-    };
+    return runOffline({ ...options, latencyMs: 0, attempts: 1 });
   }
 
   const model = modelFor(options.tier);
   let lastError: unknown;
+  let totalLatency = 0;
 
   for (let attempt = 1; attempt <= 2; attempt++) {
     const started = Date.now();
@@ -126,15 +137,17 @@ export async function completeJson<T>(options: {
             }
           : null,
         attempts: attempt,
-        latencyMs: Date.now() - started,
+        latencyMs: totalLatency + Date.now() - started,
       };
     } catch (error) {
       lastError = error;
+      totalLatency += Date.now() - started;
       console.warn(`[llm] task=${options.task} attempt=${attempt} failed: ${(error as Error).message}`);
     }
   }
 
-  throw new Error(
-    `LLM output failed validation after 2 attempts (${options.task}): ${(lastError as Error)?.message}`,
-  );
+  // If the API is down or the chosen model is stalling, fall back to the
+  // built-in rules so the demo still returns a useful answer.
+  console.warn(`[llm] task=${options.task} falling back to offline after API failure: ${(lastError as Error)?.message}`);
+  return runOffline({ ...options, latencyMs: totalLatency, attempts: 2 });
 }
