@@ -149,7 +149,7 @@ export default async function DashboardPage() {
                   .map((project) => (
                     <li key={project.id}>
                       <Link
-                        href="/orders"
+                        href={`/projects/${project.id}`}
                         className="block rounded-xl border border-line p-4 transition hover:bg-panel-2"
                       >
                         <div className="flex items-start justify-between gap-3">
