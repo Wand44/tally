@@ -65,6 +65,17 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Hide the browser default spinners so the themed step buttons are the only
+ * counter controls on the rate-card form. */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
+
 body {
   background-color: var(--bg);
   color: var(--fg);
