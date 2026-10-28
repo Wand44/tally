@@ -1,9 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { createOrderFromQuoteAction, generateProposalAction, priceGigAction } from '@/app/actions';
-import { CardSkeleton, Skeleton } from '@/components/skeleton';
 import { formatMoney } from '@/lib/money';
 import type { QuoteOutcome } from '@/lib/pricing';
 import type { Proposal, ProposalTone } from '@/lib/proposals';
@@ -11,6 +10,14 @@ import type { Proposal, ProposalTone } from '@/lib/proposals';
 const tones: { id: ProposalTone; label: string }[] = [
   { id: 'friendly', label: 'Friendly' },
   { id: 'formal', label: 'Formal' },
+];
+
+const PRICING_STAGES = [
+  { label: 'Searching market rates...', threshold: 0 },
+  { label: 'Reading the sources...', threshold: 25 },
+  { label: 'Estimating hours...', threshold: 50 },
+  { label: 'Checking your floor rate...', threshold: 75 },
+  { label: 'Building the quote...', threshold: 90 },
 ];
 
 export function Pricer({
@@ -42,6 +49,7 @@ export function Pricer({
   const [error, setError] = useState('');
   const [pending, startTransition] = useTransition();
   const [busy, setBusy] = useState<'price' | 'proposal' | 'order' | null>(null);
+  const [progress, setProgress] = useState(0);
 
   function price() {
     setError('');
@@ -97,6 +105,15 @@ export function Pricer({
     await navigator.clipboard.writeText(text);
     setCopied(label);
   }
+
+  useEffect(() => {
+    if (busy !== 'price') return;
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress((prev) => Math.min(prev + 0.7, 95));
+    }, 60);
+    return () => clearInterval(interval);
+  }, [busy]);
 
   return (
     <div className="grid gap-4 lg:grid-cols-5">
@@ -178,15 +195,29 @@ export function Pricer({
 
       <div className="lg:col-span-3">
         {busy === 'price' && !quote ? (
-          <div className="space-y-4">
-            <div className="card">
-              <Skeleton className="h-3 w-28" />
-              <Skeleton className="mt-3 h-10 w-40" />
-              <Skeleton className="mt-2 h-3 w-56" />
-              <Skeleton className="mt-6 h-9 w-36" />
+          <div className="card" role="status" aria-live="polite">
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium">
+                {([...PRICING_STAGES].reverse().find((s) => progress >= s.threshold) ?? PRICING_STAGES[0]).label}
+              </span>
+              <span className="text-sm text-muted tabular-nums">{Math.round(progress)}%</span>
             </div>
-            <CardSkeleton />
-            <CardSkeleton />
+            <div
+              className="mt-3 h-2 w-full overflow-hidden rounded-full bg-panel-2"
+              role="progressbar"
+              aria-valuenow={Math.round(progress)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Pricing progress"
+            >
+              <div
+                className="h-full rounded-full bg-accent transition-[width] duration-100 ease-out"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="mt-2 text-xs text-muted">
+              Comparing your rate card against real market posts before the quote lands.
+            </p>
           </div>
         ) : !quote ? (
           <div className="card h-full">
