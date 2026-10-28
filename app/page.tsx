@@ -137,7 +137,9 @@ export default async function DashboardPage() {
 
           <div className="card">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Orders</h2>
+              <Link href="/orders" className="font-semibold hover:underline">
+                Orders
+              </Link>
               <span className="text-xs text-muted">{data.stats.activeProjects} active</span>
             </div>
             {data.projects.filter((project) => project.status === 'active').length === 0 ? (
