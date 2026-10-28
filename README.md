@@ -13,7 +13,7 @@
 
 > Win the gig. Price it right. Protect the scope.
 
-**Live demo: [tally-six-liard.vercel.app](https://tally-six-liard.vercel.app/)** — seeded
+**Live demo: [tally-six-liard.vercel.app](https://tally-ai-assist.vercel.app/)** — seeded
 workspace, no signup. All inference runs on Nebius Token Factory (NVIDIA
 Nemotron-3-Nano fast tier, Kimi-K3 smart tier), app hosted on Vercel, database
 on Turso.
